@@ -25,7 +25,7 @@ docker-compose up -d --build
 **Configure env:**
 
 ```bash
-# Create and start containers for the API.
+# Copy enviroment variables
 cp .env.example .env
 ```
 

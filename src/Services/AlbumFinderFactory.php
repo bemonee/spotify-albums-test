@@ -17,19 +17,19 @@ class AlbumFinderFactory
         $this->container = $container;
     }
 
-    public function getAlbumFinder(string $configuredAlbumFinder): AlbumFinder
+    public function getAlbumFinder(string $configuredAlbumFinderService): AlbumFinder
     {
-        if ($this->configuredAlbumFinderIsInvalid($configuredAlbumFinder)) {
-            throw new InvalidAlbumFinderConfigException($configuredAlbumFinder);
+        if ($this->isConfiguredAlbumFinderServiceValid($configuredAlbumFinderService)) {
+            throw new InvalidAlbumFinderConfigException($configuredAlbumFinderService);
         }
 
-        switch ($configuredAlbumFinder) {
+        switch ($configuredAlbumFinderService) {
             case AvailableAlbumFindersEnum::SPOTIFY:
                 return $this->container->offsetGet(SpotifyAlbumFinder::class);
         }
     }
 
-    private function configuredAlbumFinderIsInvalid(string $configuredAlbumFinder): bool
+    private function isConfiguredAlbumFinderServiceValid(string $configuredAlbumFinder): bool
     {
         return !in_array($configuredAlbumFinder, AvailableAlbumFindersEnum::getAvailableServices());
     }

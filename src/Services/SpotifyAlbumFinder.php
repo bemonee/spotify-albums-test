@@ -20,7 +20,10 @@ class SpotifyAlbumFinder implements AlbumFinder
 
     public function findBy(string $bandName): array
     {
+        $this->logger->info('Logging in into Spotify...');
+
         $this->spotifyApi->logIn();
+        
         $this->logger->info("Searching albums for band name: $bandName");
 
         return $this->spotifyApi->findAlbums($bandName);

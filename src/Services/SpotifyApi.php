@@ -19,8 +19,6 @@ class SpotifyApi
 
     private const SPOTIFY_BASE_URL = 'https://api.spotify.com/v1';
 
-    private const ACCESS_TOKEN = 'SPOTIFY_ACCESS_TOKEN';
-
     private Client $httpClient;
 
     private Logger $logger;
@@ -31,17 +29,14 @@ class SpotifyApi
     {
         $this->httpClient = $httpClient;
         $this->logger = $logger;
-
-        $this->accessToken = $_SESSION[self::ACCESS_TOKEN] ?? null;
+        $this->accessToken = null;
     }
 
     public function logIn(): bool
     {
-        if ($this->alreadyLoggedIn()) {
-            return $this->accessToken;
+        if ($this->isAlreadyLoggedIn()) {
+            return true;
         }
-
-        $this->logger->info('Logging in into Spotify...');
 
         try {
             $token = base64_encode(
@@ -58,14 +53,14 @@ class SpotifyApi
                 ]
             ]);
         } catch (GuzzleException $e) {
-            $this->logger->error("Something was wrong logging in into Spotify: {$e->getMessage()}");
+            $this->logger->error("Something went wrong logging in into Spotify: {$e->getMessage()}");
 
             return false;
         }
 
         $this->logger->info('Successfully logged in into Spotify. Registering access token');
 
-        $this->accessToken = $_SESSION[self::ACCESS_TOKEN] = new AccessToken($res->getBody()->getContents());
+        $this->accessToken = new AccessToken($res->getBody()->getContents());
 
         return true;
     }
@@ -79,7 +74,7 @@ class SpotifyApi
 
     public function findAlbums(string $bandName): ?array
     {
-        if (!$this->alreadyLoggedIn()) {
+        if (!$this->isAlreadyLoggedIn()) {
             $this->logIn();
         }
 
@@ -116,10 +111,6 @@ class SpotifyApi
             }
 
             $items = $this->requestAlbums($bandId, ++$iteration, $limit);
-
-            if ($iteration == 3) {
-                break;
-            }
         }
 
         // To avoid multiple requests
@@ -140,14 +131,15 @@ class SpotifyApi
         $iterations = count($albumIds) / $limit;
 
         for ($iteration = 0; $iteration < $iterations; $iteration++) {
-            $ids = implode(',', array_slice($albumIds, ($iteration * $limit), $limit));
-
-            $this->logger->info("Requesting Album tracks for album ids ($ids)");
-
-            $offset = ($iteration * $limit);
-            $url = self::SPOTIFY_BASE_URL."/albums?limit=$limit&offset=$offset&ids=$ids";
-
             try {
+                $offset = ($iteration * $limit);
+
+                $ids = implode(',', array_slice($albumIds, $offset, $limit));
+
+                $this->logger->info("Requesting Album tracks for album ids ($ids)");
+
+                $url = self::SPOTIFY_BASE_URL."/albums?limit=$limit&offset=$offset&ids=$ids";
+
                 $res = $this->httpClient->request('GET', $url, $this->getAuthorizationHeader());
 
                 $json = json_decode($res->getBody()->getContents());
@@ -169,16 +161,15 @@ class SpotifyApi
 
     private function requestAlbums(string $bandId, int $iteration, int $limit): ?array
     {
-        $offset = ($iteration * $limit);
-
-        $this->logger->info("Requesting albums for band id: $bandId (Offset $iteration)");
-
-        $url = self::SPOTIFY_BASE_URL."/artists/{$bandId}/albums?offset=$offset&limit=$limit&include_groups=album,single";
-
-        $this->logger->info($url);
-
         try {
+            $offset = ($iteration * $limit);
+
+            $url = self::SPOTIFY_BASE_URL."/artists/{$bandId}/albums?offset=$offset&limit=$limit&include_groups=album,single";
+
+            $this->logger->info("Requesting albums for band id: $bandId (Offset $offset): Url: $url");
+
             $res = $this->httpClient->request('GET', $url, $this->getAuthorizationHeader());
+
         } catch (GuzzleException $e) {
             $this->logger->error("Something was wrong finding the band id: {$e->getMessage()}");
 
@@ -188,7 +179,7 @@ class SpotifyApi
         $json = json_decode($res->getBody()->getContents());
 
         if (!$json || empty($json->items)) {
-            $this->logger->info("No results found for band id: $bandId");
+            $this->logger->info("No albums found for band id: $bandId");
             return null;
         }
 
@@ -225,7 +216,7 @@ class SpotifyApi
         return $bandId;
     }
 
-    private function alreadyLoggedIn(): bool
+    private function isAlreadyLoggedIn(): bool
     {
         return null !== $this->accessToken && !$this->accessToken->shouldLoginAgain();
     }
