@@ -11,5 +11,7 @@ if (file_exists($baseDir . '.env')) {
 }
 
 $dotenv->required([
-
+    'ALBUM_FINDER_SERVICE',
+    'ALBUM_FINDER_API_CLIENT_ID',
+    'ALBUM_FINDER_API_CLIENT_SECRET',
 ]);
